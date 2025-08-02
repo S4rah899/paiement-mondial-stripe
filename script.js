@@ -16,19 +16,15 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    // Appel API Mondial Relay (Vercel Prod)
     try {
-      const res = await fetch(
-        `https://paiement-mondial-stripe-fxw3zkr6e-sarahs-projects-6a089f26.vercel.app/api/mondialrelay?cp=${cp}`
-      );
+      const res = await fetch(`/api/mondialrelay?cp=${cp}`);
       const points = await res.json();
 
-      if (points.error) {
+      if (points.error || !Array.isArray(points)) {
         alert("Erreur lors de la récupération des points relais.");
         return;
       }
 
-      // Affiche les points relais dans la popup
       pointRelaisList.innerHTML = "";
       points.forEach((relai, index) => {
         const li = document.createElement("li");
@@ -54,7 +50,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   pointRelaisList.addEventListener("click", (e) => {
     if (e.target.classList.contains("choisirRelais")) {
-      const index = e.target.dataset.index;
       const li = e.target.closest("li");
       selectedRelais = li.innerText.trim();
       selectedRelaisInput.value = selectedRelais;
@@ -71,36 +66,65 @@ document.addEventListener("DOMContentLoaded", function () {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    // Vérification du point relais
     if (!selectedRelaisInput.value) {
       alert("Merci de sélectionner un point relais.");
       return;
     }
 
-    const res = await fetch("/api/create-payment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: document.getElementById("montant").value,
-      }),
+    // Récupération des données du formulaire
+    const montant = parseFloat(document.getElementById("montant").value || "0");
+    const nom = document.getElementById("nom").value.trim();
+
+    if (!nom || montant <= 0) {
+      alert("Veuillez remplir tous les champs correctement.");
+      return;
+    }
+
+    // Création du PaymentMethod
+    const { paymentMethod, error } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: card,
+      billing_details: { name: nom }
     });
 
-    const { clientSecret } = await res.json();
+    if (error) {
+      alert(error.message);
+      return;
+    }
 
-    const result = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: card,
-        billing_details: {
-          name: document.getElementById("nom").value,
-        },
-      },
-    });
+    try {
+      const res = await fetch("/api/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          montantTotal: montant,
+          nomPrenom: nom,
+          pointRelaisId: selectedRelaisInput.value,
+          paymentMethodId: paymentMethod.id
+        }),
+      });
 
-    if (result.error) {
-      alert(result.error.message);
-    } else if (result.paymentIntent.status === "succeeded") {
-      alert("Paiement réussi !");
-      form.reset();
-      selectedRelaisInput.value = "";
+      const data = await res.json();
+
+      if (data.error) {
+        alert("❌ Paiement échoué : " + data.error);
+        return;
+      }
+
+      const result = await stripe.confirmCardPayment(data.clientSecret);
+
+      if (result.error) {
+        alert("💳 Erreur : " + result.error.message);
+      } else if (result.paymentIntent.status === "succeeded") {
+        alert("✅ Paiement réussi ! Merci 🎉");
+        form.reset();
+        selectedRelaisInput.value = "";
+        card.clear();
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erreur serveur ou réseau.");
     }
   });
 });
