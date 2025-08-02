@@ -1,60 +1,106 @@
-const stripe = Stripe("pk_live_51RWHfeE4cEWOVVQdBZjduOiwl7nee5Dj0lweLqrRX5MyrHCuUBXteL6yko2FdyKg4v8MT8EStzerBtPtXPmA5TGp00AQLTHeMB");
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("payment-form");
+  const postalCodeInput = document.getElementById("codePostal");
+  const pointRelaisList = document.getElementById("pointRelaisList");
+  const relaiSelectBtn = document.getElementById("selectRelaisBtn");
+  const selectedRelaisInput = document.getElementById("selectedRelais");
+  const widgetPopup = document.getElementById("widgetPopup");
+  const closePopup = document.getElementById("closePopup");
 
-const elements = stripe.elements();
-const cardElement = elements.create("card");
-cardElement.mount("#card-element");
+  let selectedRelais = null;
 
-const form = document.getElementById("payment-form");
-const amountInput = document.getElementById("amount");
-const errorMessage = document.getElementById("error-message");
-const successMessage = document.getElementById("payment-success");
+  relaiSelectBtn.addEventListener("click", async () => {
+    const cp = postalCodeInput.value.trim();
+    if (!cp) {
+      alert("Merci d’entrer un code postal avant de chercher un point relais.");
+      return;
+    }
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  errorMessage.textContent = "";
-  successMessage.textContent = "";
+    // Appel API Mondial Relay (Vercel Prod)
+    try {
+      const res = await fetch(
+        `https://paiement-mondial-stripe-fxw3zkr6e-sarahs-projects-6a089f26.vercel.app/api/mondialrelay?cp=${cp}`
+      );
+      const points = await res.json();
 
-  const amount = parseInt(amountInput.value, 10) * 100;
+      if (points.error) {
+        alert("Erreur lors de la récupération des points relais.");
+        return;
+      }
 
-  if (!amount || amount <= 0) {
-    errorMessage.textContent = "Merci de saisir un montant valide.";
-    return;
-  }
+      // Affiche les points relais dans la popup
+      pointRelaisList.innerHTML = "";
+      points.forEach((relai, index) => {
+        const li = document.createElement("li");
+        li.className = "relais-item";
+        li.innerHTML = `
+          <strong>${relai.Nom}</strong><br>
+          ${relai.Adresse1}, ${relai.CP} ${relai.Ville}
+          <br><button class="choisirRelais" data-index="${index}">Choisir</button>
+        `;
+        pointRelaisList.appendChild(li);
+      });
 
-  const { paymentMethod, error } = await stripe.createPaymentMethod({
-    type: 'card',
-    card: cardElement,
+      widgetPopup.style.display = "block";
+    } catch (err) {
+      console.error("Erreur API Mondial Relay :", err);
+      alert("Impossible de charger les points relais.");
+    }
   });
 
-  if (error) {
-    errorMessage.textContent = error.message;
-    return;
-  }
+  closePopup.addEventListener("click", () => {
+    widgetPopup.style.display = "none";
+  });
 
-  try {
-    const response = await fetch('/api/create-payment', {
+  pointRelaisList.addEventListener("click", (e) => {
+    if (e.target.classList.contains("choisirRelais")) {
+      const index = e.target.dataset.index;
+      const li = e.target.closest("li");
+      selectedRelais = li.innerText.trim();
+      selectedRelaisInput.value = selectedRelais;
+      widgetPopup.style.display = "none";
+    }
+  });
+
+  // Stripe - paiement
+  const stripe = Stripe("pk_live_51RWHfeE4cEWOVVQdBZjduOiwl7nee5Dj0lweLqrRX5MyrHCuUBXteL6yko2FdyKg4v8MT8EStzerBtPtXPmA5TGp00AQLTHeMB");
+  const elements = stripe.elements();
+  const card = elements.create("card");
+  card.mount("#card-element");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!selectedRelaisInput.value) {
+      alert("Merci de sélectionner un point relais.");
+      return;
+    }
+
+    const res = await fetch("/api/create-payment", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        amount: amount,
-        payment_method_id: paymentMethod.id
-      })
+        amount: document.getElementById("montant").value,
+      }),
     });
 
-    const data = await response.json();
+    const { clientSecret } = await res.json();
 
-    if (data.success) {
-      successMessage.textContent = "Paiement réussi ! Merci.";
+    const result = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: card,
+        billing_details: {
+          name: document.getElementById("nom").value,
+        },
+      },
+    });
+
+    if (result.error) {
+      alert(result.error.message);
+    } else if (result.paymentIntent.status === "succeeded") {
+      alert("Paiement réussi !");
       form.reset();
-      cardElement.clear();
-    } else if (data.requires_action) {
-      await stripe.confirmCardPayment(data.payment_intent_client_secret);
-      successMessage.textContent = "Paiement complété avec authentification.";
-    } else {
-      errorMessage.textContent = data.message || "Erreur de paiement.";
+      selectedRelaisInput.value = "";
     }
-  } catch (err) {
-    errorMessage.textContent = "Erreur de communication avec le serveur.";
-    console.error(err);
-  }
+  });
 });
