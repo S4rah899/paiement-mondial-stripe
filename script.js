@@ -66,13 +66,11 @@ document.addEventListener("DOMContentLoaded", function () {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    // Vérification du point relais
     if (!selectedRelaisInput.value) {
       alert("Merci de sélectionner un point relais.");
       return;
     }
 
-    // Récupération des données du formulaire
     const montant = parseFloat(document.getElementById("montant").value || "0");
     const nom = document.getElementById("nom").value.trim();
 
@@ -81,7 +79,6 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    // Création du PaymentMethod
     const { paymentMethod, error } = await stripe.createPaymentMethod({
       type: 'card',
       card: card,
@@ -101,18 +98,20 @@ document.addEventListener("DOMContentLoaded", function () {
           montantTotal: montant,
           nomPrenom: nom,
           pointRelaisId: selectedRelaisInput.value,
-          paymentMethodId: paymentMethod.id
+          payment_method_id: paymentMethod.id, // ✅ nom corrigé ici
         }),
       });
 
       const data = await res.json();
 
-      if (data.error) {
-        alert("❌ Paiement échoué : " + data.error);
+      if (data.error || res.status >= 400) {
+        alert("❌ Paiement échoué : " + (data.message || data.error));
         return;
       }
 
-      const result = await stripe.confirmCardPayment(data.clientSecret);
+      const result = await stripe.confirmCardPayment(
+        data.payment_intent_client_secret // ✅ nom corrigé ici
+      );
 
       if (result.error) {
         alert("💳 Erreur : " + result.error.message);
