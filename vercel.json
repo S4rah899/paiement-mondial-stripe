@@ -2,7 +2,7 @@
   "version": 2,
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/", "destination": "/index.html" },
     { "source": "/api/create-payment", "destination": "/api/create-payment.js" }
   ],
   "functions": {
