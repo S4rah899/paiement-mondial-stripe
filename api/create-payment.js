@@ -16,9 +16,10 @@ export default async function handler(req, res) {
       automatic_payment_methods: { enabled: true }
     });
 
-    res.status(200).json({ clientSecret: paymentIntent.client_secret });
+    return res.status(200).json({ clientSecret: paymentIntent.client_secret });
 
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    console.error("Erreur Stripe :", error.message);
+    return res.status(500).json({ message: error.message });
   }
 }
