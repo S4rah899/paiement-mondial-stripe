@@ -4,86 +4,27 @@
   <meta charset="UTF-8" />
   <title>Paiement Stripe + Mondial Relay</title>
 
-  <!-- jQuery compatible widget -->
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
-
-  <!-- Google Maps API (si besoin de GMap, sinon Leaflet) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=TA_CLE"></script>
-
-  <!-- Widget MR V3 -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCMXWLnKzoDAl0jSkqLFGNIXwEDY8skm7Y"></script>
   <script src="https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.min.js"></script>
-
-  <!-- Stripe.js -->
   <script src="https://js.stripe.com/v3/"></script>
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <style>
+    /* ton style existant — inchangé */
     * { box-sizing: border-box; }
-    body {
-      font-family: 'Helvetica Neue', sans-serif;
-      background-color: #f9f9f9;
-      padding: 20px; margin: 0;
-    }
-    .form-container {
-      max-width: 600px; margin: auto;
-      background: white; padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-    h2 {
-      text-align: center; font-size: 20px;
-      margin-bottom: 20px; color: #333;
-    }
-    input, textarea {
-      width: 100%; padding: 12px;
-      margin-bottom: 16px; border: 1px solid #ccc;
-      border-radius: 8px; font-size: 15px;
-    }
-    label {
-      font-weight: 600; font-size: 14px;
-      display: block; margin-bottom: 6px;
-    }
-    button {
-      width: 100%; padding: 14px; border: none;
-      border-radius: 8px; font-size: 16px;
-      font-weight: 600; cursor: pointer;
-      background-color: #111; color: white;
-      transition: background-color 0.3s ease;
-    }
-    button:hover {
-      background-color: #333;
-    }
-
-    #Zone_Widget {
-      width: 100%; min-height: 350px;
-      overflow: hidden; border: 1px solid #ddd;
-      margin-bottom: 20px; border-radius: 8px;
-      background: #fff; padding: 10px;
-      position: relative;
-    }
-
-    #Zone_Widget iframe,
-    #Zone_Widget .mrMap,
-    #Zone_Widget > div {
-      width: 100% !important;
-      max-width: 100% !important;
-    }
-
-    #selectedPointRelais {
-      font-weight: bold; color: #0070f3;
-      margin: 10px 0; min-height: 24px;
-      text-align: center;
-    }
-
-    #card-element {
-      border: 1px solid #ccc; border-radius: 8px;
-      padding: 12px; margin-bottom: 16px;
-    }
-
-    #card-errors {
-      color: red; margin-bottom: 16px;
-    }
+    body { font-family: 'Helvetica Neue', sans-serif; background-color: #f9f9f9; padding: 20px; margin: 0; }
+    .form-container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    h2 { text-align: center; font-size: 20px; margin-bottom: 20px; color: #333; }
+    input, textarea { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
+    label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 6px; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; background-color: #111; color: white; transition: background-color 0.3s ease; }
+    button:hover { background-color: #333; }
+    #Zone_Widget { width: 100%; min-height: 350px; overflow: hidden; border: 1px solid #ddd; margin-bottom: 20px; border-radius: 8px; background: #fff; padding: 10px; position: relative; }
+    #Zone_Widget iframe, #Zone_Widget .mrMap, #Zone_Widget > div { width: 100% !important; max-width: 100% !important; }
+    #selectedPointRelais { font-weight: bold; color: #0070f3; margin: 10px 0; min-height: 24px; text-align: center; }
+    #card-element { border: 1px solid #ccc; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+    #card-errors { color: red; margin-bottom: 16px; }
   </style>
 </head>
 <body>
@@ -130,8 +71,19 @@
 </div>
 
 <script>
-  // Stripe initialisation (remplace pk_live_... par ta clé publique Stripe)
-  const stripe = Stripe("pk_live_51RWHfeE4cEWOVVQdBZjduOiwl7nee5Dj0lweLqrRX5MyrHCuUBXteL6yko2FdyKg4v8MT8EStzerBtPtXPmA5TGp00AQLTHeMB");
+  // ---------------------------
+  // CONFIG
+  // ---------------------------
+  // Ton domaine Vercel (change si différent)
+  const API_BASE = "https://paiement-mondial-stripe.vercel.app";
+
+  // Ta clé Stripe publique (tu me l'as donnée)
+  const STRIPE_PUBLISHABLE_KEY = "pk_live_51RWHfeE4cEWOVVQdBZjduOiwl7nee5Dj0lweLqrRX5MyrHCuUBXteL6yko2FdyKg4v8MT8EStzerBtPtXPmA5TGp00AQLTHeMB";
+
+  // ---------------------------
+  // Stripe init
+  // ---------------------------
+  const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
   const elements = stripe.elements();
   const card = elements.create("card");
   card.mount("#card-element");
@@ -139,14 +91,16 @@
     document.getElementById("card-errors").textContent = e.error ? e.error.message : "";
   });
 
-  // Calcul du total produit + frais port
+  // ---------------------------
+  // helpers
+  // ---------------------------
   function calculerTotal() {
     const prod = parseFloat(document.getElementById("montantProduit").value) || 0;
     const frais = parseFloat(document.getElementById("fraisPort").value) || 0;
     document.getElementById("montantTotal").value = (prod + frais).toFixed(2);
   }
+  calculerTotal();
 
-  // Vérifie si point relais sélectionné
   function verifierPointRelais() {
     if (!document.getElementById("Retour_Widget").value) {
       alert("Sélectionnez un point relais.");
@@ -155,7 +109,7 @@
     return true;
   }
 
-  // Init widget Mondial Relay
+  // Widget Mondial Relay init
   $(document).ready(function(){
     $("#Zone_Widget").MR_ParcelShopPicker({
       Target: "#Retour_Widget",
@@ -173,57 +127,74 @@
     }, 500);
   });
 
-  // Form submit
-  document.getElementById("checkoutForm").addEventListener("submit", async e => {
+  // ---------------------------
+  // Submit handler
+  // ---------------------------
+  document.getElementById("checkoutForm").addEventListener("submit", async function(e) {
     e.preventDefault();
     if (!verifierPointRelais()) return;
-
     calculerTotal();
 
-    const pseudoTikTok = document.getElementById("pseudoTikTok").value.trim();
-    const nomPrenom = document.getElementById("nomPrenom").value.trim();
-    const adresseComplete = document.getElementById("adresseComplete").value.trim();
-    const telephone = document.getElementById("telephone").value.trim();
-    const numeroCommande = document.getElementById("numeroCommande").value.trim();
-    const montantTotal = document.getElementById("montantTotal").value.trim();
-    const pointRelaisId = document.getElementById("Retour_Widget").value.trim();
+    // create payment method
+    const { paymentMethod, error } = await stripe.createPaymentMethod({
+      type: "card",
+      card: card,
+      billing_details: { name: document.getElementById("nomPrenom").value.trim() }
+    });
 
-    // Crée PaymentMethod Stripe
-    const { paymentMethod, error } = await stripe.createPaymentMethod("card", card);
     if (error) {
       document.getElementById("card-errors").textContent = error.message;
       return;
     }
 
-    // Prépare données à envoyer
-    const dataToSend = {
-      pseudoTikTok,
-      nomPrenom,
-      adresseComplete,
-      telephone,
-      numeroCommande,
-      montantTotal,
-      pointRelaisId,
+    // payload
+    const payload = {
+      pseudoTikTok: document.getElementById("pseudoTikTok").value.trim(),
+      nomPrenom: document.getElementById("nomPrenom").value.trim(),
+      adresseComplete: document.getElementById("adresseComplete").value.trim(),
+      telephone: document.getElementById("telephone").value.trim(),
+      numeroCommande: document.getElementById("numeroCommande").value.trim(),
+      montantTotal: document.getElementById("montantTotal").value.trim(),
+      pointRelaisId: document.getElementById("Retour_Widget").value,
       payment_method_id: paymentMethod.id
     };
 
-    // Envoie au backend
-    fetch("/api/create-payment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dataToSend)
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert("Paiement réussi ! Merci pour votre commande.");
-        // Optionnel : redirection vers page confirmation
-        // window.location.href = "/confirmation";
-      } else {
-        alert("Erreur : " + (data.message || "Paiement échoué."));
+    try {
+      const res = await fetch(`${API_BASE}/api/create-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`HTTP ${res.status} - ${txt}`);
       }
-    })
-    .catch(() => alert("Erreur réseau, réessayez plus tard."));
+
+      const data = await res.json();
+
+      // handle 3D Secure or immediate success
+      if (data.requires_action) {
+        const result = await stripe.confirmCardPayment(data.payment_intent_client_secret);
+        if (result.error) {
+          alert("Erreur 3D Secure: " + result.error.message);
+          return;
+        } else if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
+          alert("Paiement réussi ! 🎉");
+          // optional: redirect to confirmation page
+          return;
+        }
+      } else if (data.success) {
+        alert("Paiement réussi ! 🎉");
+        return;
+      } else {
+        alert("Paiement non complété.");
+        console.log("Response:", data);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erreur paiement : " + err.message);
+    }
   });
 </script>
 
