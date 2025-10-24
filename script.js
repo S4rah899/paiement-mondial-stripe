@@ -110,8 +110,10 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const result = await stripe.confirmCardPayment(
-        data.payment_intent_client_secret // ✅ nom corrigé ici
-      );
+  data.clientSecret,
+  { payment_method: { card: card } }
+);
+
 
       if (result.error) {
         alert("💳 Erreur : " + result.error.message);
