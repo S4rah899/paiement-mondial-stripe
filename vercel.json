@@ -1,5 +1,10 @@
 {
+  "version": 2,
   "cleanUrls": true,
+  "rewrites": [
+    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/api/create-payment", "destination": "/api/create-payment.js" }
+  ],
   "functions": {
     "api/*.js": {
       "runtime": "nodejs18.x"
