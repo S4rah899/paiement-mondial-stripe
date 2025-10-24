@@ -1,122 +1,202 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Paiement Stripe + Mondial Relay</title>
+
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCMXWLnKzoDAl0jSkqLFGNIXwEDY8skm7Y"></script>
   <script src="https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.min.js"></script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=TA_CLE_PUBLIQUE_GOOGLE"></script>
   <script src="https://js.stripe.com/v3/"></script>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* ton CSS existant */
+    /* ton style existant — inchangé */
+    * { box-sizing: border-box; }
+    body { font-family: 'Helvetica Neue', sans-serif; background-color: #f9f9f9; padding: 20px; margin: 0; }
+    .form-container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    h2 { text-align: center; font-size: 20px; margin-bottom: 20px; color: #333; }
+    input, textarea { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
+    label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 6px; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; background-color: #111; color: white; transition: background-color 0.3s ease; }
+    button:hover { background-color: #333; }
+    #Zone_Widget { width: 100%; min-height: 350px; overflow: hidden; border: 1px solid #ddd; margin-bottom: 20px; border-radius: 8px; background: #fff; padding: 10px; position: relative; }
+    #Zone_Widget iframe, #Zone_Widget .mrMap, #Zone_Widget > div { width: 100% !important; max-width: 100% !important; }
+    #selectedPointRelais { font-weight: bold; color: #0070f3; margin: 10px 0; min-height: 24px; text-align: center; }
+    #card-element { border: 1px solid #ccc; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+    #card-errors { color: red; margin-bottom: 16px; }
   </style>
 </head>
 <body>
+
 <div class="form-container">
   <h2>RÉGLER MA COMMANDE</h2>
-  <form id="checkoutForm" onsubmit="return verifierPointRelais()">
-    <label>PSEUDO TIKTOK :</label>
+
+  <form id="checkoutForm">
+    <label for="pseudoTikTok">PSEUDO TIKTOK :</label>
     <input type="text" id="pseudoTikTok" required />
-    <label>NOM & PRÉNOM :</label>
+
+    <label for="nomPrenom">NOM & PRÉNOM :</label>
     <input type="text" id="nomPrenom" required />
-    <label>ADRESSE :</label>
+
+    <label for="adresseComplete">ADRESSE COMPLÈTE :</label>
     <textarea id="adresseComplete" rows="2" required></textarea>
-    <label>TÉLÉPHONE :</label>
+
+    <label for="telephone">TELEPHONE :</label>
     <input type="tel" id="telephone" required />
-    <label>NUMÉRO DE COMMANDE :</label>
+
+    <label for="numeroCommande">NUMÉRO DE COMMANDE :</label>
     <input type="text" id="numeroCommande" required />
-    <label>MONTANT DU PRODUIT (€) :</label>
-    <input type="number" id="montantProduit" oninput="calculerTotal()" min="0" step="0.01" required />
-    <label>FRAIS DE PORT (€) :</label>
-    <input type="text" value="5.00" id="fraisPort" readonly />
-    <label>MONTANT TOTAL (€) :</label>
-    <input type="text" id="montantTotal" readonly />
-    <label>POINT RELAIS :</label>
+
+    <label for="montantProduit">MONTANT DU PRODUIT (€) :</label>
+    <input type="number" id="montantProduit" required oninput="calculerTotal()" min="0" step="0.01" />
+
+    <label for="fraisPort">FRAIS DE PORT (€) :</label>
+    <input type="text" value="5.00" id="fraisPort" readonly style="background:#f9f9f9;color:#888;" />
+
+    <label for="montantTotal">MONTANT TOTAL (€) :</label>
+    <input type="text" id="montantTotal" readonly style="background:#f9f9f9;color:#888;" />
+
+    <label>CHOISISSEZ UN POINT RELAIS :</label>
     <input type="hidden" id="Retour_Widget" name="point_relais_id" />
     <div id="Zone_Widget"></div>
     <div id="selectedPointRelais">📍 Aucun point relais sélectionné</div>
-    <label>CARTE BANCAIRE :</label>
+
+    <label for="card-element">CARTE BANCAIRE :</label>
     <div id="card-element"></div>
     <div id="card-errors"></div>
-    <button type="submit">PAYER MAINTENANT</button>
+
+    <button type="submit" id="payerBtn">PAYER MAINTENANT</button>
   </form>
 </div>
 
 <script>
-const stripe = Stripe("pk_live_51RWHfeE4cEWOVVQdBZjduOiwl7nee5Dj0lweLqrRX5MyrHCuUBXteL6yko2FdyKg4v8MT8EStzerBtPtXPmA5TGp00AQLTHeMB");
-const elements = stripe.elements();
-const card = elements.create("card");
-card.mount("#card-element");
-card.on("change", e => document.getElementById("card-errors").textContent = e.error?.message || "");
+  // ---------------------------
+  // CONFIG
+  // ---------------------------
+  // Ton domaine Vercel (change si différent)
+  const API_BASE = "https://paiement-mondial-stripe.vercel.app";
 
-function calculerTotal() {
-  const prod = parseFloat(document.getElementById("montantProduit").value) || 0;
-  document.getElementById("montantTotal").value = (prod + 5).toFixed(2);
-}
-calculerTotal();
+  // Ta clé Stripe publique (tu me l'as donnée)
+  const STRIPE_PUBLISHABLE_KEY = "pk_live_51RWHfeE4cEWOVVQdBZjduOiwl7nee5Dj0lweLqrRX5MyrHCuUBXteL6yko2FdyKg4v8MT8EStzerBtPtXPmA5TGp00AQLTHeMB";
 
-function verifierPointRelais() {
-  if (!document.getElementById("Retour_Widget").value) {
-    alert("Sélectionnez un point relais.");
-    return false;
+  // ---------------------------
+  // Stripe init
+  // ---------------------------
+  const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+  const elements = stripe.elements();
+  const card = elements.create("card");
+  card.mount("#card-element");
+  card.on("change", e => {
+    document.getElementById("card-errors").textContent = e.error ? e.error.message : "";
+  });
+
+  // ---------------------------
+  // helpers
+  // ---------------------------
+  function calculerTotal() {
+    const prod = parseFloat(document.getElementById("montantProduit").value) || 0;
+    const frais = parseFloat(document.getElementById("fraisPort").value) || 0;
+    document.getElementById("montantTotal").value = (prod + frais).toFixed(2);
   }
-  return true;
-}
+  calculerTotal();
 
-$(document).ready(function(){
-  $("#Zone_Widget").MR_ParcelShopPicker({
-    Target: "#Retour_Widget",
-    Brand: "CC23JWR4",
-    Country: "FR",
-    Responsive: true,
-    ShowResultsOnMap: false,
-    EnableGmap: false,
-    OnParcelShopSelected: pt => {
-      $("#selectedPointRelais").text(`📦 ${pt.ID} · ${pt.Nom}, ${pt.CP} ${pt.Ville}`);
+  function verifierPointRelais() {
+    if (!document.getElementById("Retour_Widget").value) {
+      alert("Sélectionnez un point relais.");
+      return false;
+    }
+    return true;
+  }
+
+  // Widget Mondial Relay init
+  $(document).ready(function(){
+    $("#Zone_Widget").MR_ParcelShopPicker({
+      Target: "#Retour_Widget",
+      Brand: "CC23JWR4",
+      Country: "FR",
+      Responsive: true,
+      ShowResultsOnMap: false,
+      EnableGmap: false,
+      OnParcelShopSelected: function(pt) {
+        $("#selectedPointRelais").text(`📦 ${pt.ID} · ${pt.Nom}, ${pt.CP} ${pt.Ville}`);
+      }
+    });
+    setTimeout(() => {
+      $("#Zone_Widget").css({ overflowX:'hidden', maxWidth:'100%' });
+    }, 500);
+  });
+
+  // ---------------------------
+  // Submit handler
+  // ---------------------------
+  document.getElementById("checkoutForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    if (!verifierPointRelais()) return;
+    calculerTotal();
+
+    // create payment method
+    const { paymentMethod, error } = await stripe.createPaymentMethod({
+      type: "card",
+      card: card,
+      billing_details: { name: document.getElementById("nomPrenom").value.trim() }
+    });
+
+    if (error) {
+      document.getElementById("card-errors").textContent = error.message;
+      return;
+    }
+
+    // payload
+    const payload = {
+      pseudoTikTok: document.getElementById("pseudoTikTok").value.trim(),
+      nomPrenom: document.getElementById("nomPrenom").value.trim(),
+      adresseComplete: document.getElementById("adresseComplete").value.trim(),
+      telephone: document.getElementById("telephone").value.trim(),
+      numeroCommande: document.getElementById("numeroCommande").value.trim(),
+      montantTotal: document.getElementById("montantTotal").value.trim(),
+      pointRelaisId: document.getElementById("Retour_Widget").value,
+      payment_method_id: paymentMethod.id
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/api/create-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`HTTP ${res.status} - ${txt}`);
+      }
+
+      const data = await res.json();
+
+      // handle 3D Secure or immediate success
+      if (data.requires_action) {
+        const result = await stripe.confirmCardPayment(data.payment_intent_client_secret);
+        if (result.error) {
+          alert("Erreur 3D Secure: " + result.error.message);
+          return;
+        } else if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
+          alert("Paiement réussi ! 🎉");
+          // optional: redirect to confirmation page
+          return;
+        }
+      } else if (data.success) {
+        alert("Paiement réussi ! 🎉");
+        return;
+      } else {
+        alert("Paiement non complété.");
+        console.log("Response:", data);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erreur paiement : " + err.message);
     }
   });
-});
-
-document.getElementById("checkoutForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  if (!verifierPointRelais()) return;
-  const pseudoTikTok = $("#pseudoTikTok").val().trim();
-  const nomPrenom = $("#nomPrenom").val().trim();
-  const adresseComplete = $("#adresseComplete").val().trim();
-  const telephone = $("#telephone").val().trim();
-  const numeroCommande = $("#numeroCommande").val().trim();
-  const montantTotal = $("#montantTotal").val().trim();
-  const pointRelaisId = $("#Retour_Widget").val();
-
-  const { paymentMethod, error } = await stripe.createPaymentMethod({
-    type: "card",
-    card: card,
-    billing_details: { name: nomPrenom }
-  });
-
-  if (error) { alert(error.message); return; }
-
-  try {
-    const res = await fetch("/api/create-payment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        pseudoTikTok, nomPrenom, adresseComplete,
-        telephone, numeroCommande, montantTotal, pointRelaisId,
-        payment_method_id: paymentMethod.id
-      })
-    });
-    const data = await res.json();
-
-    if (data.requires_action) {
-      const result = await stripe.confirmCardPayment(data.payment_intent_client_secret);
-      if (result.error) alert("Erreur : " + result.error.message);
-      else if (result.paymentIntent.status === "succeeded") alert("✅ Paiement réussi !");
-    } else if (data.success) alert("✅ Paiement réussi !");
-    else alert("Erreur paiement : " + (data.message || "inconnue"));
-  } catch (err) { console.error(err); alert("Erreur serveur ou réseau."); }
-});
 </script>
+
 </body>
 </html>
