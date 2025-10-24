@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import dotenv from "dotenv";
 dotenv.config();
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY); // clé live dans Vercel ENV
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -10,54 +10,33 @@ export default async function handler(req, res) {
   }
 
   try {
-    const {
-      pseudoTikTok,
-      nomPrenom,
-      adresseComplete,
-      telephone,
-      numeroCommande,
-      montantTotal,
-      pointRelaisId,
-      payment_method_id
-    } = req.body;
+    const { pseudoTikTok, nomPrenom, adresseComplete, telephone, numeroCommande, montantTotal, pointRelaisId, payment_method_id } = req.body;
 
-    if (!nomPrenom || !montantTotal || !payment_method_id) {
-      return res.status(400).json({ message: "Champs essentiels manquants" });
+    if (!pseudoTikTok || !nomPrenom || !adresseComplete || !telephone || !numeroCommande || !pointRelaisId || !payment_method_id || !montantTotal) {
+      return res.status(400).json({ message: "Champs manquants" });
     }
 
-    const montant = Math.round(parseFloat(montantTotal) * 100);
+    const amount = Math.round(Number(montantTotal) * 100);
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: montant,
+      amount,
       currency: "eur",
       payment_method: payment_method_id,
       confirmation_method: "manual",
       confirm: true,
       description: `Commande ${numeroCommande} - Client: ${nomPrenom}`,
-      metadata: {
-        pseudoTikTok: pseudoTikTok || "",
-        telephone: telephone || "",
-        adresseComplete: adresseComplete || "",
-        pointRelaisId: pointRelaisId || ""
-      },
-      automatic_payment_methods: { enabled: true, allow_redirects: "never" }
+      metadata: { pseudoTikTok, telephone, adresseComplete, pointRelaisId }
     });
 
-    if (
-      paymentIntent.status === "requires_action" &&
-      paymentIntent.next_action?.type === "use_stripe_sdk"
-    ) {
-      return res.json({
-        requires_action: true,
-        payment_intent_client_secret: paymentIntent.client_secret
-      });
+    if (paymentIntent.status === "requires_action" && paymentIntent.next_action?.type === "use_stripe_sdk") {
+      return res.json({ requires_action: true, payment_intent_client_secret: paymentIntent.client_secret });
     } else if (paymentIntent.status === "succeeded") {
       return res.json({ success: true });
     } else {
       return res.status(400).json({ message: "Paiement échoué" });
     }
   } catch (err) {
-    console.error("Erreur paiement:", err);
-    return res.status(500).json({ message: err.message });
+    console.error("Erreur Stripe :", err);
+    return res.status(500).json({ message: err.message || "Erreur serveur" });
   }
 }
