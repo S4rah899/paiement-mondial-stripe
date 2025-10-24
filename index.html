@@ -11,7 +11,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* ton style existant — inchangé */
+    /* Ton style existant — inchangé */
     * { box-sizing: border-box; }
     body { font-family: 'Helvetica Neue', sans-serif; background-color: #f9f9f9; padding: 20px; margin: 0; }
     .form-container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
@@ -74,10 +74,7 @@
   // ---------------------------
   // CONFIG
   // ---------------------------
-  // Ton domaine Vercel (change si différent)
   const API_BASE = "https://paiement-mondial-stripe.vercel.app";
-
-  // Ta clé Stripe publique (tu me l'as donnée)
   const STRIPE_PUBLISHABLE_KEY = "pk_live_51RWHfeE4cEWOVVQdBZjduOiwl7nee5Dj0lweLqrRX5MyrHCuUBXteL6yko2FdyKg4v8MT8EStzerBtPtXPmA5TGp00AQLTHeMB";
 
   // ---------------------------
@@ -109,7 +106,9 @@
     return true;
   }
 
-  // Widget Mondial Relay init
+  // ---------------------------
+  // Widget Mondial Relay
+  // ---------------------------
   $(document).ready(function(){
     $("#Zone_Widget").MR_ParcelShopPicker({
       Target: "#Retour_Widget",
@@ -135,7 +134,6 @@
     if (!verifierPointRelais()) return;
     calculerTotal();
 
-    // create payment method
     const { paymentMethod, error } = await stripe.createPaymentMethod({
       type: "card",
       card: card,
@@ -147,7 +145,6 @@
       return;
     }
 
-    // payload
     const payload = {
       pseudoTikTok: document.getElementById("pseudoTikTok").value.trim(),
       nomPrenom: document.getElementById("nomPrenom").value.trim(),
@@ -173,7 +170,6 @@
 
       const data = await res.json();
 
-      // handle 3D Secure or immediate success
       if (data.requires_action) {
         const result = await stripe.confirmCardPayment(data.payment_intent_client_secret);
         if (result.error) {
@@ -181,7 +177,6 @@
           return;
         } else if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
           alert("Paiement réussi ! 🎉");
-          // optional: redirect to confirmation page
           return;
         }
       } else if (data.success) {
