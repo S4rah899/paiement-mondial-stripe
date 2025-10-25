@@ -8,6 +8,7 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1.js" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/(cgv|confidentialite)\\.html", "dest": "/$1.html" },
+    { "src": "/", "dest": "/index.html" }
   ]
 }
