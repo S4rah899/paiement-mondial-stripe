@@ -1,13 +1,13 @@
 {
   "version": 2,
-  "cleanUrls": true,
-  "rewrites": [
-    { "source": "/", "destination": "/index.html" },
-    { "source": "/api/create-payment", "destination": "/api/create-payment.js" }
+  "builds": [
+    { "src": "create-payment.js", "use": "@vercel/node" },
+    { "src": "mondialrelay.js", "use": "@vercel/node" },
+    { "src": "index.html", "use": "@vercel/static" }
   ],
-  "functions": {
-    "api/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  }
+  "routes": [
+    { "src": "/create-payment", "dest": "/create-payment.js" },
+    { "src": "/mondialrelay", "dest": "/mondialrelay.js" },
+    { "src": "/", "dest": "/index.html" }
+  ]
 }
