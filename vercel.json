@@ -1,13 +1,11 @@
 {
   "version": 2,
   "builds": [
-    { "src": "create-payment.js", "use": "@vercel/node" },
-    { "src": "mondialrelay.js", "use": "@vercel/node" },
+    { "src": "api/*.js", "use": "@vercel/node" },
     { "src": "index.html", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/create-payment", "dest": "/create-payment.js" },
-    { "src": "/mondialrelay", "dest": "/mondialrelay.js" },
+    { "src": "/api/(.*)", "dest": "/api/$1.js" },
     { "src": "/", "dest": "/index.html" }
   ]
 }
