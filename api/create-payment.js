@@ -1,32 +1,26 @@
-import Stripe from "stripe";
+// create-payment.js
+import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET);
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method Not Allowed" });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { montantTotal, nomPrenom, pointRelaisId } = req.body;
+    const { amount, currency = 'eur', metadata = {} } = req.body || {};
+    if (!amount || isNaN(amount)) return res.status(400).json({ error: 'Amount missing or invalid' });
 
-    if (!montantTotal || !nomPrenom || !pointRelaisId) {
-      return res.status(400).json({ message: "Données manquantes" });
-    }
-
-    const amount = Math.round(parseFloat(montantTotal) * 100);
-
+    // Stripe expects amount in the smallest currency unit (cents)
     const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency: "eur",
-      automatic_payment_methods: { enabled: true },
-      metadata: { nomPrenom, pointRelaisId }
+      amount: Math.round(Number(amount)),
+      currency,
+      metadata,
+      automatic_payment_methods: { enabled: true }
     });
 
     return res.json({ clientSecret: paymentIntent.client_secret });
-
-  } catch (error) {
-    console.error("Erreur Stripe:", error.message);
-    return res.status(500).json({ message: error.message });
+  } catch (err) {
+    console.error('create-payment error:', err);
+    return res.status(500).json({ error: err.message || 'Internal error' });
   }
 }
