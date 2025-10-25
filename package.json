@@ -1,14 +1,11 @@
 {
-  "name": "paiement-stripe-mondialrelay-root",
+  "name": "paiement-mondial-stripe",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "vercel dev"
-  },
   "dependencies": {
     "stripe": "^12.0.0",
-    "node-fetch": "^3.4.1",
+    "node-fetch": "^3.3.2",
     "xml2js": "^0.4.23"
   }
 }
