@@ -79,9 +79,10 @@ button#submit:hover {
   font-size: 8px;
 }
 
-.secure-payment, 
-.secure-text span {
-  font-weight: 600;
-  color: #111;
+.secure-payment,
+.secure-payment * {
   font-size: 8px !important;
+  line-height: 1.4 !important;
+  color: #666 !important;
+  text-align: center !important;
 }
