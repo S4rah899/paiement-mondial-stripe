@@ -70,7 +70,7 @@ button#submit:hover {
 
 .secure-payment,
 .secure-payment * {
-  font-size: 8px !important;
+  font-size: 15px !important;
   line-height: 1.4 !important;
   color: #666 !important;
   text-align: center !important;
