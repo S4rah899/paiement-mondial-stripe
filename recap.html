@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Récapitulatif de commande</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      text-align: center;
+      padding: 40px;
+    }
+    .recap {
+      background: white;
+      display: inline-block;
+      padding: 25px 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    h2 { color: #0070f3; margin-bottom: 20px; }
+    p { margin: 8px 0; color: #333; }
+    .back-btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #111;
+      color: white;
+      border-radius: 6px;
+      text-decoration: none;
+    }
+    .back-btn:hover { background: #333; }
+  </style>
+</head>
+<body>
+  <div class="recap">
+    <h2>🎉 Paiement réussi !</h2>
+    <p><strong>Merci pour votre commande 🙏</strong></p>
+    <p id="details"></p>
+    <a href="/" class="back-btn">Retour à l’accueil</a>
+  </div>
+
+  <script>
+    const data = JSON.parse(localStorage.getItem('lastOrder') || "{}");
+    if (data.nomPrenom) {
+      document.getElementById("details").innerHTML = `
+        <p>Commande : <strong>${data.numeroCommande}</strong></p>
+        <p>Client : ${data.nomPrenom}</p>
+        <p>Montant total : <strong>${data.montantTotal} €</strong></p>
+        <p>Point relais : ${data.pointRelaisId || "—"}</p>
+      `;
+    } else {
+      document.getElementById("details").textContent = "Aucune donnée de commande trouvée.";
+    }
+  </script>
+</body>
+</html>
