@@ -233,7 +233,10 @@
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        alert("Paiement réussi ! Merci pour votre commande.");
+        
+localStorage.setItem('lastOrder', JSON.stringify(payload));
+// ✅ Redirige vers la page recap
+window.location.href = "/recap.html";
         // Optionnel : redirection vers page confirmation
         // window.location.href = "/confirmation";
       } else {
